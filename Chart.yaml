@@ -1,4 +1,4 @@
 apiVersion: v2
 description: A Karpenter Configuration Helm chart for Kubernetes
-name: karpenter-config
+name: karpenter-resources
 version: 1.0.0
