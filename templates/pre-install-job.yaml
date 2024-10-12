@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-pre-install-job"
+  namespace: karpenter
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded, hook-failed
+spec:
+  template:
+    spec:
+      containers:
+        - name: pre-install-job
+          image: alpine:latest
+          command:
+          - "/bin/sh"
+          - "-c"
+          - |
+            sleep 30
+
+      restartPolicy: Never

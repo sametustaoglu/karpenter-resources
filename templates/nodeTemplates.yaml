@@ -1,0 +1,57 @@
+{{- range .Values.nodeTemplates }}
+apiVersion: karpenter.k8s.aws/v1alpha1
+kind: AWSNodeTemplate
+metadata:
+  name: {{ .name }}
+spec:
+  {{- if .instanceProfile }}
+  instanceProfile: {{ .instanceProfile }}
+  {{- end }}
+  amiFamily: {{ .amiFamily }}
+  {{- if .amiSelector }}
+  amiSelector:
+   {{- toYaml .amiSelector | nindent 4 }}
+  {{- end }}
+  {{- if or .volumeSizeRoot .volumeSizeData }}
+  blockDeviceMappings:
+  {{- if .volumeSizeRoot }}
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: {{ .volumeSizeRoot }}Gi
+        volumeType: gp3
+        encrypted: true
+  {{- end }}
+    {{- if .volumeSizeData }}
+    - deviceName: /dev/xvdb
+      ebs:
+        volumeSize: {{ .volumeSizeData }}Gi
+        volumeType: gp3
+        encrypted: true
+        {{- if .volumeSnapshotIDData }}
+        snapshotID: {{ .volumeSnapshotIDData }}
+        {{- end }}
+        {{- if .volumeKmsKeyIDData }}
+        kmsKeyID: {{ .volumeKmsKeyIDData }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .metadataOptions }}
+  metadataOptions:
+    httpEndpoint: {{ .metadataOptions.httpEndpoint }}
+    httpProtocolIPv6: {{ .metadataOptions.httpProtocolIPv6 }}
+    httpPutResponseHopLimit: {{ .metadataOptions.httpPutResponseHopLimit }}
+    httpTokens: {{ .metadataOptions.httpTokens }}
+  {{- end }}
+  subnetSelector:
+    karpenter.sh/discovery: {{ .clusterName }}
+  securityGroupSelector:
+    karpenter.sh/discovery: {{ .clusterName }}
+  tags:
+    Cluster:  {{ required "cluster is mandatory" $.Values.cluster }}
+    Environment: {{ required "environment is mandatory" $.Values.environment }}
+    Role: eks-node
+    {{- if .tags }}
+    {{- toYaml .tags | nindent 4 }}
+    {{- end }}
+---
+{{- end }}

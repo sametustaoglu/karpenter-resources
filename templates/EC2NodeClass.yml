@@ -1,0 +1,57 @@
+{{- range .Values.ec2NodeClasses }}
+apiVersion: karpenter.k8s.aws/{{ $.Values.karpenterApiVersion | default "v1" }}
+kind: EC2NodeClass
+metadata:
+  name: {{ .name }}
+spec:
+  amiSelectorTerms:
+    - alias: {{ .amiAlias }}
+  {{- if or .role .instanceProfile }}
+  role: {{ .instanceProfile | default .role }}
+  {{- end }}
+  {{- if or .volumeSizeRoot .volumeSizeData }}
+  blockDeviceMappings:
+  {{- if .volumeSizeRoot }}
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: {{ .volumeSizeRoot }}Gi
+        volumeType: gp3
+        encrypted: true
+  {{- end }}
+    {{- if .volumeSizeData }}
+    - deviceName: /dev/xvdb
+      ebs:
+        volumeSize: {{ .volumeSizeData }}Gi
+        volumeType: gp3
+        encrypted: true
+        {{- if .volumeSnapshotIDData }}
+        snapshotID: {{ .volumeSnapshotIDData }}
+        {{- end }}
+        {{- if .volumeKmsKeyIDData }}
+        kmsKeyID: {{ .volumeKmsKeyIDData }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .metadataOptions }}
+  metadataOptions:
+    httpEndpoint: {{ .metadataOptions.httpEndpoint }}
+    httpProtocolIPv6: {{ .metadataOptions.httpProtocolIPv6 }}
+    httpPutResponseHopLimit: {{ .metadataOptions.httpPutResponseHopLimit }}
+    httpTokens: {{ .metadataOptions.httpTokens }}
+  {{- end }}
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .clusterName }}
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .clusterName }}
+  tags:
+    phrase.com/karpenter-nodepool: {{ .name }}
+    Cluster:  {{ required "cluster is mandatory" $.Values.cluster }}
+    Environment: {{ required "environment is mandatory" $.Values.environment }}
+    Role: eks-node
+    {{- if .tags }}
+    {{- toYaml .tags | nindent 4 }}
+    {{- end }}
+---
+{{- end }}
